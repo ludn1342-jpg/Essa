@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago ESSA - Registros relacionados</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+        body { background-color: #fff; color: #333; min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* Banner */
+        .banner { width: 100%; line-height: 0; }
+        .banner img { width: 100%; height: auto; display: block; object-fit: cover; }
+
+        /* Cerrar sesion */
+        .cerrar-sesion { padding: 12px 20px; }
+        .cerrar-sesion a {
+            color: #e67e22; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer;
+        }
+        .cerrar-sesion a:hover { text-decoration: underline; }
+        .cerrar-sesion svg { width: 18px; height: 18px; }
+
+        /* Layout principal */
+        .main-layout { display: flex; flex: 1; flex-direction: column; }
+
+        /* Columna izquierda */
+        .col-left { flex: 1; padding: 0 20px 30px; }
+
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 2px solid #e9ecef; margin-bottom: 20px; }
+        .tab {
+            padding: 12px 20px; font-size: 14px; color: #888; cursor: pointer; border-bottom: 3px solid transparent;
+            margin-bottom: -2px; font-weight: 500; transition: all 0.2s;
+        }
+        .tab.active { color: #e67e22; border-bottom-color: #e67e22; }
+        .tab:hover { color: #555; }
+
+        /* Seleccionar todos */
+        .select-all { display: flex; align-items: center; gap: 10px; padding: 10px 0; margin-bottom: 10px; }
+        .select-all label { font-size: 14px; color: #555; cursor: pointer; }
+
+        /* Checkbox custom */
+        .custom-checkbox {
+            width: 20px; height: 20px; border: 2px solid #ccc; border-radius: 4px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #fff; transition: all 0.2s;
+        }
+        .custom-checkbox.checked { background: #6f65f2; border-color: #6f65f2; }
+        .custom-checkbox.checked::after { content: '✓'; color: #fff; font-size: 13px; font-weight: 700; }
+
+        /* Factura card */
+        .facturas-list { display: flex; flex-direction: column; gap: 12px; }
+
+        .factura-card {
+            border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; display: flex; align-items: flex-start;
+            gap: 15px; background: #fafbfc; transition: all 0.2s;
+        }
+        .factura-card:hover { border-color: #ccc; }
+        .factura-card.selected { border-color: #6f65f2; background: #f5f4ff; }
+
+        .factura-info { flex: 1; }
+        .factura-numero { font-size: 15px; color: #333; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .factura-numero strong { font-weight: 700; }
+        .factura-numero .eye-icon { color: #999; cursor: pointer; font-size: 16px; }
+        .factura-numero .eye-icon:hover { color: #555; }
+        .factura-desc { font-size: 13px; color: #777; }
+        .factura-desc span.label-desc { color: #999; margin-right: 4px; }
+
+        .factura-monto { font-size: 18px; font-weight: 700; color: #333; white-space: nowrap; text-align: right; min-width: 140px; }
+
+        /* Columna derecha */
+        .col-right {
+            display: none; width: 100%; padding: 30px; border-left: 1px solid #e9ecef; background: #fff;
+        }
+        .col-right h2 { font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #222; }
+        .col-right .desc-text { font-size: 13px; color: #666; line-height: 1.6; margin-bottom: 30px; }
+
+        .detalle-section h3 { font-size: 16px; font-weight: 700; margin-bottom: 15px; color: #222; }
+        .detalle-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+        .detalle-row .dl { color: #555; }
+        .detalle-row .dv { font-weight: 500; color: #333; }
+
+        .registros-count { font-size: 13px; color: #e67e22; text-align: right; margin-top: 15px; font-weight: 500; }
+
+        .btn-pagar {
+            width: 100%; margin-top: 20px; padding: 14px; background: #a8c4f0; color: #fff; border: none;
+            border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.2s;
+        }
+        .btn-pagar.active { background: #6f65f2; }
+        .btn-pagar.active:hover { background: #5d53e0; }
+
+        /* Footer */
+        .footer {
+            padding: 20px; display: flex; justify-content: center; align-items: center; gap: 8px;
+            border-top: 1px solid #e9ecef; margin-top: auto; color: #999; font-size: 13px;
+        }
+        .footer .ptp-logo { height: 22px; opacity: 0.5; }
+
+        /* Mobile: pagar sticky abajo */
+        .mobile-pagar {
+            display: none; position: sticky; bottom: 0; padding: 15px 20px; background: #fff;
+            border-top: 1px solid #e9ecef; box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+        }
+        .mobile-pagar .factura-monto-mobile { text-align: center; font-size: 18px; font-weight: 700; margin-bottom: 10px; color: #333; }
+        .mobile-pagar .btn-pagar { margin-top: 0; }
+
+        /* Loading */
+        .loading-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.9);
+            z-index: 100; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .loading-overlay.show { display: flex; }
+        .loading-spinner { width: 40px; height: 40px; border: 4px solid #e9ecef; border-top: 4px solid #6f65f2; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .loading-text { margin-top: 15px; font-size: 14px; color: #666; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Error state */
+        .error-card {
+            text-align: center; padding: 40px 20px; color: #666;
+        }
+        .error-card .error-icon { font-size: 48px; margin-bottom: 15px; }
+        .error-card h3 { font-size: 16px; color: #333; margin-bottom: 8px; }
+        .error-card p { font-size: 13px; line-height: 1.6; }
+        .error-card .btn-volver {
+            margin-top: 20px; display: inline-block; padding: 10px 30px; background: #6f65f2;
+            color: #fff; border: none; border-radius: 25px; font-size: 14px; text-decoration: none; cursor: pointer;
+        }
+
+        /* Detalle modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: #fff; border-radius: 12px; max-width: 500px; width: 100%; padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15); max-height: 80vh; overflow-y: auto;
+        }
+        .modal-box h3 { font-size: 16px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-box .close-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: #999; }
+        .modal-box .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+        .modal-box .detail-row .dl { color: #888; }
+        .modal-box .detail-row .dv { font-weight: 500; }
+
+        /* Desktop */
+        @media (min-width: 992px) {
+            .main-layout { flex-direction: row; }
+            .col-left { width: 65%; border-right: 1px solid #e9ecef; padding: 0 30px 30px 30px; }
+            .col-right { display: block; width: 35%; position: sticky; top: 0; align-self: flex-start; }
+            .mobile-pagar { display: none !important; }
+        }
+        @media (max-width: 991px) {
+            .mobile-pagar { display: block; }
+            .factura-card { flex-wrap: wrap; }
+            .factura-monto { width: 100%; text-align: center; margin-top: 10px; font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading -->
+    <div class="loading-overlay show" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Consultando facturas en ESSA...</div>
+    </div>
+
+    <!-- Detalle modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box" id="modalBox">
+            <h3>Detalle de factura <button class="close-btn" onclick="closeModal()">&times;</button></h3>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Banner -->
+    <div class="banner">
+        <img src="essa.png" alt="ESSA Banner">
+    </div>
+
+    <!-- Cerrar sesion -->
+    <div class="cerrar-sesion">
+        <a href="index.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Cerrar sesión
+        </a>
+    </div>
+
+    <!-- Main -->
+    <div class="main-layout">
+        <!-- Izquierda -->
+        <div class="col-left">
+            <div class="tabs">
+                <div class="tab active">Registros relacionados</div>
+                <div class="tab">Historial de pago</div>
+            </div>
+
+            <!-- Contenido principal -->
+            <div id="mainContent">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+
+        <!-- Derecha (desktop) -->
+        <div class="col-right" id="colRight">
+            <h2>Pagos electrónicos</h2>
+            <p class="desc-text">
+                Desde su casa, oficina o cualquier lugar, pague de forma segura; a través de nuestro sistema de pago.
+                Use nuestro servicio desde las 00:01 am hasta las 11:30 pm los 7 días de la semana.
+            </p>
+            <div class="detalle-section">
+                <h3>Detalle</h3>
+                <div class="detalle-row"><span class="dl">Subtotal</span><span class="dv" id="subtotalVal">0</span></div>
+                <div class="detalle-row"><span class="dl">Valor de servicio</span><span class="dv">0</span></div>
+                <div class="detalle-row"><span class="dl">Total a pagar</span><span class="dv" id="totalVal">0</span></div>
+            </div>
+            <div class="registros-count" id="registrosCount">0 de 0 registros seleccionados</div>
+            <button class="btn-pagar" id="btnPagar" disabled>Pagar</button>
+        </div>
+    </div>
+
+    <!-- Mobile: barra pagar fija abajo -->
+    <div class="mobile-pagar" id="mobilePagar" style="display:none;">
+        <div class="factura-monto-mobile" id="mobileMonto">0 COP</div>
+        <button class="btn-pagar" id="btnPagarMobile" disabled>Pagar</button>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <span>Hecho por</span>
+        <span style="font-weight:600; color:#666;">place<span style="font-weight:800; color:#333;">to</span>pay</span>
+        <span style="background:#e9ecef; padding:2px 6px; border-radius:3px; font-size:10px; color:#999;">by evertec</span>
+    </div>
+
+    <script>
+        // ================================================
+        // Recibir datos del index.html via sessionStorage
+        // ================================================
+        const stored = sessionStorage.getItem('essaFacturas');
+        const params = new URLSearchParams(window.location.search);
+
+        let facturas = [];
+        let errorMsg = null;
+
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                if (parsed.success && parsed.facturas) {
+                    facturas = parsed.facturas;
+                } else {
+                    errorMsg = parsed.error || parsed.message || 'No se encontraron facturas.';
+                }
+            } catch {
+                errorMsg = 'Error al leer los datos de factura.';
+            }
+        } else {
+            errorMsg = 'No hay datos de consulta. Vuelve al formulario para consultar.';
+        }
+
+        // ================================================
+        // Formatear moneda COP
+        // ================================================
+        function formatCOP(val) {
+            if (typeof val === 'string') {
+                val = val.replace(/[^0-9.,]/g, '').replace(/\./g, '').replace(',', '.');
+                val = parseFloat(val);
+            }
+            if (isNaN(val)) return '0 COP';
+            return val.toLocaleString('es-CO') + ' COP';
+        }
+
+        function parseMonto(val) {
+            if (typeof val === 'number') return val;
+            if (typeof val === 'string') {
+                const clean = val.replace(/[^0-9.,]/g, '').replace(/\./g, '').replace(',', '.');
+                return parseFloat(clean) || 0;
+            }
+            return 0;
+        }
+
+        // ================================================
+        // Extraer valor de factura del objeto
+        // ================================================
+        function getFacturaField(f, ...keys) {
+            for (const k of keys) {
+                if (f[k] !== undefined && f[k] !== null && f[k] !== '') return f[k];
+                // Case insensitive
+                const lower = k.toLowerCase();
+                for (const fk of Object.keys(f)) {
+                    if (fk.toLowerCase() === lower || fk.toLowerCase().includes(lower)) return f[fk];
+                }
+            }
+            return null;
+        }
+
+        function getFacturaNum(f) {
+            return getFacturaField(f, 'facturaNum', 'factura', 'invoice', 'invoiceNumber', 'bill_number', 'reference', 'numero', 'number', 'id') || '';
+        }
+
+        function getFacturaMonto(f) {
+            return getFacturaField(f, 'monto', 'amount', 'total', 'value', 'valor', 'balance', 'saldo', 'payment_amount') || '0';
+        }
+
+        function getFacturaCuenta(f) {
+            return getFacturaField(f, 'cuenta', 'account', 'accountNumber', 'account_number', 'reference') || '';
+        }
+
+        function getFacturaDesc(f) {
+            const num = getFacturaNum(f);
+            const cuenta = getFacturaCuenta(f);
+            const desc = getFacturaField(f, 'descripcion', 'description', 'detail', 'detalle');
+            if (desc) return desc;
+            if (num && cuenta) return `Pago factura No. ${num} - Cuenta No. ${cuenta}`;
+            if (num) return `Pago factura No. ${num}`;
+            return '';
+        }
+
+        // ================================================
+        // Estado de seleccion
+        // ================================================
+        const selected = new Set();
+
+        function updateTotals() {
+            let subtotal = 0;
+            selected.forEach(i => {
+                subtotal += parseMonto(getFacturaMonto(facturas[i]));
+            });
+
+            const subtotalStr = formatCOP(subtotal);
+            document.getElementById('subtotalVal').textContent = subtotal > 0 ? subtotalStr.replace(' COP', '') : '0';
+            document.getElementById('totalVal').textContent = subtotal > 0 ? subtotalStr.replace(' COP', '') : '0';
+            document.getElementById('registrosCount').textContent = `${selected.size} de ${facturas.length} registros seleccionados`;
+
+            const btnPagar = document.getElementById('btnPagar');
+            const btnPagarM = document.getElementById('btnPagarMobile');
+            if (selected.size > 0) {
+                btnPagar.disabled = false;
+                btnPagar.classList.add('active');
+                btnPagarM.disabled = false;
+                btnPagarM.classList.add('active');
+            } else {
+                btnPagar.disabled = true;
+                btnPagar.classList.remove('active');
+                btnPagarM.disabled = true;
+                btnPagarM.classList.remove('active');
+            }
+
+            // Mobile monto
+            document.getElementById('mobileMonto').textContent = subtotal > 0 ? subtotalStr : '0 COP';
+        }
+
+        function toggleSelect(index) {
+            if (selected.has(index)) {
+                selected.delete(index);
+            } else {
+                selected.add(index);
+            }
+            renderFacturas();
+            updateTotals();
+        }
+
+        function toggleSelectAll() {
+            if (selected.size === facturas.length) {
+                selected.clear();
+            } else {
+                facturas.forEach((_, i) => selected.add(i));
+            }
+            renderFacturas();
+            updateTotals();
+        }
+
+        // ================================================
+        // Render facturas
+        // ================================================
+        function renderFacturas() {
+            const container = document.getElementById('mainContent');
+
+            if (errorMsg) {
+                container.innerHTML = `
+                    <div class="error-card">
+                        <div class="error-icon">⚠️</div>
+                        <h3>No se pudieron obtener las facturas</h3>
+                        <p>${errorMsg}</p>
+                        <a href="index.html" class="btn-volver">Volver a consultar</a>
+                    </div>
+                `;
+                return;
+            }
+
+            if (facturas.length === 0) {
+                container.innerHTML = `
+                    <div class="error-card">
+                        <div class="error-icon">📋</div>
+                        <h3>No se encontraron registros</h3>
+                        <p>No hay facturas asociadas a las cuentas consultadas.</p>
+                        <a href="index.html" class="btn-volver">Volver a consultar</a>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="select-all">
+                    <div class="custom-checkbox ${selected.size === facturas.length ? 'checked' : ''}" onclick="toggleSelectAll()"></div>
+                    <label onclick="toggleSelectAll()">Seleccionar todos</label>
+                </div>
+                <div class="facturas-list">
+            `;
+
+            facturas.forEach((f, i) => {
+                const num = getFacturaNum(f);
+                const monto = getFacturaMonto(f);
+                const desc = getFacturaDesc(f);
+                const isSelected = selected.has(i);
+
+                html += `
+                    <div class="factura-card ${isSelected ? 'selected' : ''}">
+                        <div class="custom-checkbox ${isSelected ? 'checked' : ''}" onclick="toggleSelect(${i})"></div>
+                        <div class="factura-info">
+                            <div class="factura-numero">
+                                Factura N°&nbsp; <strong>${num}</strong>
+                                <span class="eye-icon" onclick="showDetail(${i})" title="Ver detalle">👁</span>
+                            </div>
+                            <div class="factura-desc">
+                                <span class="label-desc">Descripción</span> ${desc}
+                            </div>
+                        </div>
+                        <div class="factura-monto">${formatCOP(monto)}</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+
+            // Show mobile pagar bar
+            if (window.innerWidth < 992) {
+                document.getElementById('mobilePagar').style.display = 'block';
+            }
+        }
+
+        // ================================================
+        // Modal detalle
+        // ================================================
+        function showDetail(index) {
+            const f = facturas[index];
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+
+            let html = '';
+            Object.entries(f).forEach(([key, val]) => {
+                // Nombre legible para la clave
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                html += `<div class="detail-row"><span class="dl">${label}</span><span class="dv">${val}</span></div>`;
+            });
+
+            content.innerHTML = html;
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('show');
+        }
+
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // ================================================
+        // Init
+        // ================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            // Ocultar loading
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                renderFacturas();
+                updateTotals();
+            }, 600);
+        });
+    </script>
+</body>
+</html>
