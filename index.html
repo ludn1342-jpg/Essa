@@ -17,54 +17,54 @@
         }
 
         body {
-            background-color: #f8f9fa;
+            background-color: #ffffff; /* Fondo blanco general */
             color: #333;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
         }
 
-        /* --- CABECERA (Banner) --- */
+        /* --- ESTRUCTURA PRINCIPAL --- */
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            flex: 1;
+        }
+
+        /* Contenedor de la Columna Izquierda (Banner + Formulario) */
+        .left-column {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Banner */
         .banner-container {
             width: 100%;
-            background-color: #0066cc;
-            display: flex;
-            justify-content: center;
+            line-height: 0; /* Elimina espacio extra debajo de la imagen */
         }
 
         .banner-img {
             width: 100%;
-            max-width: 1200px;
             height: auto;
             display: block;
             object-fit: cover;
         }
 
-        /* --- CONTENEDOR PRINCIPAL --- */
-        .main-content {
-            flex: 1;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
+        /* Formulario */
+        .form-wrapper {
             padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* --- TÍTULO --- */
-        .page-title {
-            font-size: 20px;
-            font-weight: 700;
-            text-align: center;
-            margin: 30px 0;
-            line-height: 1.3;
-        }
-
-        /* --- FORMULARIO --- */
-        .form-container {
             width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
+            max-width: 700px; /* Ancho máximo para el formulario en PC */
+        }
+
+        .page-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 25px 0;
+            line-height: 1.3;
+            text-align: left;
         }
 
         .form-group {
@@ -73,9 +73,9 @@
 
         .form-label {
             display: block;
-            font-size: 15px;
-            font-weight: 500;
-            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 400;
+            margin-bottom: 6px;
             color: #444;
         }
 
@@ -91,10 +91,10 @@
 
         select {
             width: 100%;
-            padding: 12px 40px 12px 15px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 16px;
+            padding: 10px 35px 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
             color: #333;
             background-color: #fff;
             appearance: none;
@@ -102,45 +102,42 @@
             -moz-appearance: none;
             cursor: pointer;
             outline: none;
+            height: 42px;
         }
 
-        select:focus {
-            border-color: #0056b3;
-            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+        /* Estilo específico para el placeholder del select */
+        select:invalid, select option[value=""] {
+            color: #999;
         }
 
-        /* Iconos dentro del select */
         .select-icons {
             position: absolute;
-            right: 15px;
+            right: 12px;
             top: 50%;
             transform: translateY(-50%);
             display: flex;
-            gap: 8px;
+            gap: 6px;
             color: #999;
             pointer-events: none;
-        }
-
-        .select-icons i {
-            font-size: 18px;
+            font-size: 16px;
         }
 
         /* Texto de ayuda */
         .helper-text {
-            font-size: 14px;
-            color: #666;
+            font-size: 13px;
+            color: #555;
             line-height: 1.5;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         /* Input del número de cuenta (TAG) */
         .input-tag-container {
             position: relative;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 8px 12px;
             background-color: #fff;
-            min-height: 48px;
+            min-height: 42px;
             display: flex;
             align-items: center;
             flex-wrap: wrap;
@@ -150,51 +147,52 @@
         }
 
         .input-tag-container:focus-within {
-            border-color: #0056b3;
-            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
         }
 
         .input-tag-container input {
             border: none;
             outline: none;
-            font-size: 16px;
+            font-size: 14px;
             flex: 1;
             min-width: 100px;
             background: transparent;
             color: #333;
+            width: 100%;
         }
 
-        /* El Tag Gris (El número ingresado) */
+        .input-tag-container input::placeholder {
+            color: #adb5bd;
+        }
+
+        /* El Tag Gris */
         .tag-item {
-            background-color: #a8adb4;
+            background-color: #a1a6ab; /* Gris exacto de la foto */
             color: white;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 15px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 14px;
             display: flex;
             align-items: center;
             gap: 6px;
-            font-weight: 500;
+            font-weight: 400;
         }
 
         .tag-item i {
             cursor: pointer;
             font-size: 14px;
+            color: #e9ecef;
         }
 
         .tag-item i:hover {
-            color: #333;
-        }
-
-        /* Ocultar el input original cuando hay tag */
-        .input-tag-container .hidden-input {
-            display: none;
+            color: #fff;
         }
 
         /* Términos y condiciones */
         .terms-text {
-            font-size: 13px;
-            color: #777;
+            font-size: 12px;
+            color: #6c757d;
             line-height: 1.5;
             margin-top: 25px;
             margin-bottom: 25px;
@@ -207,85 +205,125 @@
         /* Botón */
         .btn-submit {
             width: 100%;
-            background-color: #0066ff;
+            background-color: #6f65f2; /* Color azul/morado exacto de la foto PC */
             color: white;
             border: none;
-            padding: 14px;
-            font-size: 16px;
+            padding: 12px;
+            font-size: 15px;
             font-weight: 500;
-            border-radius: 8px;
+            border-radius: 25px; /* Bordes más redondeados como la foto */
             cursor: pointer;
             transition: background 0.2s;
         }
 
         .btn-submit:hover {
-            background-color: #0052cc;
+            background-color: #5d53e0;
         }
 
-        /* --- FOOTER (Pie de página con logos) --- */
+        /* --- AVISO MANTENIMIENTO --- */
+        .right-column {
+            width: 100%;
+            padding: 0;
+            display: none; /* Oculto por defecto en móviles */
+        }
+
+        .maintenance-card {
+            padding: 20px;
+            background-color: #fff;
+        }
+
+        .maintenance-card h3 {
+            font-size: 15px;
+            margin-bottom: 15px;
+            color: #212529;
+            font-weight: 700;
+        }
+
+        .maintenance-card p {
+            font-size: 13px;
+            color: #6c757d;
+            line-height: 1.6;
+        }
+
+        /* --- FOOTER (PlacetoPay) --- */
         .footer-logos {
             width: 100%;
-            background-color: #f0f2f5;
+            background-color: #f8f9fa;
             padding: 20px 0;
             display: flex;
             justify-content: center;
             align-items: center;
             margin-top: auto;
-            gap: 20px;
+            gap: 15px;
+            border-top: 1px solid #e9ecef;
         }
 
         .footer-logos span {
-            font-size: 20px;
-            font-weight: 700;
-            color: #555;
+            font-size: 18px;
+            font-weight: 500;
+            color: #6c757d;
+            letter-spacing: 0.5px;
         }
 
         .footer-logos span span {
-            color: #0056b3;
+            color: #4a4a4a;
+            font-weight: 700;
         }
 
         .footer-logos .badge {
-            background-color: #ddd;
-            padding: 5px 10px;
+            background-color: #e9ecef;
+            padding: 4px 8px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
-            color: #666;
+            color: #6c757d;
         }
 
-        /* --- LAYOUT RESPONSIVE (PC) --- */
-        @media (min-width: 768px) {
-            .main-content {
-                flex-direction: row;
-                gap: 40px;
-                padding: 40px;
+        /* =========================================
+           MEDIA QUERY PARA PC (Layout de la Última Foto)
+           ========================================= */
+        @media (min-width: 992px) {
+            .page-wrapper {
+                flex-direction: row; /* Pone el banner/formulario a la izq y el aviso a la der */
+                align-items: flex-start;
+                background-color: #fff;
             }
 
+            /* Columna Izquierda en PC */
             .left-column {
-                flex: 1;
-                min-width: 0;
+                width: 65%; /* Ocupa el 65% del ancho */
+                border-right: 1px solid #e9ecef; /* Línea divisoria de la foto */
+                min-height: 100vh; /* Asegura que la línea baje hasta el fondo */
             }
 
-            .right-column {
-                width: 320px;
-                flex-shrink: 0;
-                border-left: 1px solid #e0e0e0;
-                padding-left: 30px;
-            }
-
-            .form-container {
+            .form-wrapper {
+                padding: 30px 50px;
                 max-width: 100%;
             }
 
-            .page-title {
-                text-align: left;
-                font-size: 22px;
+            /* Columna Derecha (Aviso) en PC */
+            .right-column {
+                display: block;
+                width: 35%;
+                padding: 30px;
+                background-color: #fff;
             }
+
+            .maintenance-card {
+                padding: 0;
+            }
+
+            .page-title {
+                font-size: 16px;
+            }
+
+            /* En PC, el footer se oculta o se ajusta a la izquierda si lo deseas. 
+               Según tu captura de PC, no se ve footer, así que lo mantenemos abajo. */
         }
 
-        /* Ocultar la columna derecha en móviles */
-        @media (max-width: 767px) {
-            .right-column {
+        /* Ocultar footer en celular según tu instrucción */
+        @media (max-width: 991px) {
+            .footer-logos {
                 display: none;
             }
         }
@@ -293,20 +331,18 @@
 </head>
 <body>
 
-    <!-- Banner Superior -->
-    <div class="banner-container">
-        <img src="essa.png" alt="ESSA Banner" class="banner-img">
-    </div>
-
-    <!-- Contenido Principal -->
-    <div class="main-content">
+    <div class="page-wrapper">
         
-        <!-- Columna Izquierda: Formulario -->
+        <!-- COLUMNA IZQUIERDA: Banner + Formulario -->
         <div class="left-column">
-            <h1 class="page-title">Comience el proceso de pago, ingresando la siguiente información</h1>
+            <!-- Banner Superior -->
+            <div class="banner-container">
+                <img src="essa.png" alt="ESSA Banner" class="banner-img">
+            </div>
 
-            <div class="form-container">
-                
+            <div class="form-wrapper">
+                <h1 class="page-title">Comience el proceso de pago, ingresando la siguiente información</h1>
+
                 <!-- Tipo de Consulta -->
                 <div class="form-group">
                     <label class="form-label">Tipo de consulta <span>*</span></label>
@@ -325,7 +361,7 @@
                 <div class="form-group">
                     <label class="form-label">Tipo de pago <span>*</span></label>
                     <div class="custom-select-wrapper">
-                        <select id="tipoPago">
+                        <select id="tipoPago" required>
                             <option value="" disabled selected>Seleccione el tipo de pago</option>
                             <option value="total">Pago total</option>
                             <option value="sin_alumbrado">Pago sin alumbrado público</option>
@@ -346,8 +382,7 @@
                     </p>
                     
                     <div class="input-tag-container" id="tagContainer">
-                        <!-- Aquí se inyecta el Tag dinámicamente -->
-                        <input type="text" id="cuentaInput" class="hidden-input" placeholder="Escriba el número y presione Enter" autocomplete="off">
+                        <input type="text" id="cuentaInput" placeholder="" autocomplete="off">
                     </div>
                 </div>
 
@@ -358,27 +393,28 @@
 
                 <!-- Botón -->
                 <button class="btn-submit" id="btnIngresar">Ingresar</button>
-
             </div>
         </div>
 
-        <!-- Columna Derecha: Aviso (Solo PC) -->
+        <!-- COLUMNA DERECHA: Aviso Mantenimiento (Solo se ve en PC) -->
         <div class="right-column">
-            <h3 style="font-size: 16px; margin-bottom: 15px; color: #333;">Aviso de Mantenimiento 24 de octubre.</h3>
-            <p style="font-size: 14px; color: #666; line-height: 1.6;">
-                Este canal estará inhabilitado temporalmente desde el 24 de octubre a las 10:00 p.m. hasta el 25 de octubre a las 7:00 am, debido a la actualización de los sistemas de ESSA.
-            </p>
+            <div class="maintenance-card">
+                <h3>Aviso de Mantenimiento 24 de octubre.</h3>
+                <p>
+                    Este canal estará inhabilitado temporalmente desde el 24 de octubre a las 10:00 p.m. hasta el 25 de octubre a las 7:00 am, debido a la actualización de los sistemas de ESSA.
+                </p>
+            </div>
         </div>
 
     </div>
 
-    <!-- Footer -->
+    <!-- Footer (Se oculta en celular con CSS) -->
     <div class="footer-logos">
         <span>placeto<span>pay</span></span>
         <span class="badge">by evertec</span>
     </div>
 
-    <!-- Lógica JavaScript -->
+    <!-- Lógica JavaScript para el Tag de Número de Cuenta -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const tagContainer = document.getElementById('tagContainer');
@@ -386,12 +422,12 @@
             const btnIngresar = document.getElementById('btnIngresar');
             const tipoPagoSelect = document.getElementById('tipoPago');
 
-            // Función para renderizar el Tag
-            function renderTag(value) {
-                // Limpiar el contenedor dejando el input
+            // Función para manejar la creación del Tag
+            function createTag(value) {
+                // Limpiar contenedor
                 tagContainer.innerHTML = '';
                 
-                // Crear el Tag gris
+                // Crear el Tag Gris
                 const tag = document.createElement('div');
                 tag.className = 'tag-item';
                 tag.innerHTML = `
@@ -399,55 +435,47 @@
                     <i class="ph ph-x" id="removeTag"></i>
                 `;
                 
-                // Crear el input oculto para seguir escribiendo si se necesita
+                // Crear el nuevo input para escribir
                 const newInput = document.createElement('input');
                 newInput.type = 'text';
                 newInput.id = 'cuentaInput';
-                newInput.placeholder = 'Presione Enter para adicionar otro';
-                newInput.style.display = 'block'; // Mostrarlo para escribir el siguiente
+                newInput.autocomplete = 'off';
 
-                // Evento para borrar el tag
+                // Evento para borrar el Tag y volver al estado inicial
                 tag.querySelector('#removeTag').addEventListener('click', function(e) {
                     e.stopPropagation();
-                    tagContainer.innerHTML = ''; // Vaciar
-                    const resetInput = document.createElement('input');
-                    resetInput.type = 'text';
-                    resetInput.id = 'cuentaInput';
-                    resetInput.placeholder = 'Escriba el número y presione Enter';
-                    resetInput.autocomplete = 'off';
-                    tagContainer.appendChild(resetInput);
-                    resetInput.focus();
-                    attachInputEvents(); // Re-asignar eventos al nuevo input
+                    tagContainer.innerHTML = '<input type="text" id="cuentaInput" placeholder="" autocomplete="off">';
+                    document.getElementById('cuentaInput').focus();
+                    attachEnterEvent();
                 });
 
                 tagContainer.appendChild(tag);
                 tagContainer.appendChild(newInput);
                 
-                // Enfocar el nuevo input después de crear el tag
                 newInput.focus();
-                attachInputEvents();
+                attachEnterEvent();
             }
 
-            // Función para manejar los eventos del input (Enter)
-            function attachInputEvents() {
+            // Función para escuchar el Enter
+            function attachEnterEvent() {
                 const currentInput = document.getElementById('cuentaInput');
                 if (!currentInput) return;
 
                 currentInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
-                        e.preventDefault(); // Evitar envío de formulario
+                        e.preventDefault();
                         const valor = this.value.trim();
                         if (valor !== '') {
-                            renderTag(valor);
+                            createTag(valor);
                         }
                     }
                 });
             }
 
-            // Inicializar eventos
-            attachInputEvents();
+            // Inicializar
+            attachEnterEvent();
 
-            // Manejo del botón Ingresar
+            // Botón Ingresar
             btnIngresar.addEventListener('click', function() {
                 const tagActual = document.querySelector('.tag-item span');
                 
@@ -461,8 +489,12 @@
                     return;
                 }
 
-                // Simulación de envío exitoso
-                alert('Procesando pago para la cuenta: ' + tagActual.textContent);
+                // Simulación de envío
+                console.log('Enviando:', {
+                    cuenta: tagActual.textContent,
+                    pago: tipoPagoSelect.value
+                });
+                alert('Ingresando pago para la cuenta: ' + tagActual.textContent);
             });
 
         });
