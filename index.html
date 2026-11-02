@@ -224,13 +224,12 @@
             width: 100%;
             background-color: #f8f9fa;
             padding: 20px 0;
-            display: flex;
+            display: none; /* Oculto por defecto en celular */
             justify-content: center;
             align-items: center;
             margin-top: auto;
             gap: 15px;
             border-top: 1px solid #e9ecef;
-            display: none; /* Oculto en celular por tu petición anterior */
         }
 
         .footer-logos span {
@@ -274,9 +273,10 @@
                 max-width: 100%;
             }
 
-            /* Columna Derecha (Aviso) en PC */
+            /* ¡AQUÍ ESTÁ LA CORRECCIÓN! 
+               Forzamos a que se muestre en PC */
             .right-column {
-                display: block; /* Se muestra en PC */
+                display: block !important; 
                 width: 35%;
             }
 
@@ -348,7 +348,7 @@
             </div>
         </div>
 
-        <!-- COLUMNA DERECHA: Aviso Mantenimiento (Solo se ve en PC) -->
+        <!-- COLUMNA DERECHA: Aviso Mantenimiento (Aparecerá en PC) -->
         <div class="right-column">
             <div class="maintenance-card">
                 <h3>Aviso de Mantenimiento 24 de octubre.</h3>
@@ -360,7 +360,7 @@
 
     </div>
 
-    <!-- Footer (Oculto en cel, visible en PC) -->
+    <!-- Footer -->
     <div class="footer-logos">
         <span>placeto<span>pay</span></span>
         <span class="badge">by evertec</span>
