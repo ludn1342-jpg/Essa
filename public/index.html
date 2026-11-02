@@ -264,35 +264,10 @@
                     return;
                 }
 
-                if (data.success && data.facturas) {
-                    let html = '';
-                    if (Array.isArray(data.facturas)) {
-                        data.facturas.forEach((f, i) => {
-                            if (typeof f === 'object' && !Array.isArray(f)) {
-                                // Objeto JSON
-                                html += `<div style="margin-bottom:12px;"><strong>Factura ${i + 1}</strong>`;
-                                Object.entries(f).forEach(([key, val]) => {
-                                    html += `<div class="row"><span class="label">${key}</span><span class="value">${val}</span></div>`;
-                                });
-                                html += '</div>';
-                            } else if (Array.isArray(f)) {
-                                // Array de celdas de tabla
-                                html += `<div class="row">`;
-                                f.forEach((cell) => {
-                                    html += `<span class="value">${cell}</span>`;
-                                });
-                                html += `</div>`;
-                            }
-                        });
-                    }
-                    showResult('success', 'Factura encontrada', html || JSON.stringify(data.facturas, null, 2));
-                } else {
-                    showResult('error', 'Sin resultados',
-                        data.message || 'No se encontraron facturas para estas cuentas. ' +
-                        '<br><br><small>Preview del servidor:</small><br>' +
-                        `<pre style="font-size:11px;max-height:200px;overflow:auto;background:#fff;padding:8px;border-radius:4px;">${(data.preview || '').substring(0, 1000)}</pre>`
-                    );
-                }
+                // Guardar datos y redirigir a pago.html
+                sessionStorage.setItem('essaFacturas', JSON.stringify(data));
+                window.location.href = 'pago.html';
+                return;
             } catch (err) {
                 showResult('error', 'Error de conexión',
                     `No se pudo conectar al servidor: ${err.message}<br><br>Verifica que el server.js esté corriendo en <code>${API_URL}</code>`
