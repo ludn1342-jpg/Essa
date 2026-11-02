@@ -1,0 +1,14 @@
+{
+  "name": "essa-api",
+  "version": "1.0.0",
+  "description": "API para consultar facturas de ESSA via PlaceToPay",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}
