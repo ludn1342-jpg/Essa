@@ -364,57 +364,60 @@ app.post('/api/consultar', async (req, res) => {
         // =============================================================
         console.log('\n[4/5] Enviando formulario...');
 
-        // Mapear tipoPago del frontend al valor esperado por PlacetoPay
+        // Mapear tipoPago del frontend al valor numerico de PlacetoPay
         const paymentTypeMap = {
-            'total': 'full',
-            'sin_alumbrado': 'no_public_lighting',
-            'abonos': 'partial',
-            'saldos': 'balance'
+            'total': 1,
+            'sin_alumbrado': 2,
+            'abonos': 3,
+            'saldos': 4
         };
-        const paymentType = paymentTypeMap[tipoPago] || tipoPago;
+        const paymentType = paymentTypeMap[tipoPago] || 1;
 
-        // Construir form data URL-encoded
-        const formParams = new URLSearchParams();
-        formParams.append('_token', csrfToken);
-        formParams.append('g-recaptcha-response', captchaToken);
-
-        // Intentar multiples nombres de campo comunes en PlacetoPay
-        // Los campos reales dependen de como PlacetoPay configura el microsite
-        formParams.append('searchType', 'account_number');
-        formParams.append('paymentType', paymentType);
-
-        // Enviar cada cuenta como array
-        cuentas.forEach(c => {
-            formParams.append('references[]', c);
-        });
+        // Payload exacto como lo envia el frontend real de ESSA
+        const jsonBody = {
+            search_type: 'account_number',
+            payment_type: paymentType,
+            account_number: cuentas[0],  // Una cuenta a la vez
+            'g-recaptcha-response': captchaToken
+        };
 
         const submitHeaders = {
             'Referer': LOGIN_URL,
             'Origin': ESSA_BASE,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
         };
 
         if (xsrfToken) {
-            submitHeaders['X-XSRF-TOKEN'] = xsrfToken;
+            submitHeaders['X-XSRF-TOKEN'] = decodeURIComponent(xsrfToken);
         }
         if (csrfToken) {
             submitHeaders['X-CSRF-TOKEN'] = csrfToken;
         }
 
-        // --- Intento 1: POST a /essa/submit-login (form-urlencoded) ---
-        console.log('  Intento 1: POST /essa/submit-login (form-urlencoded)...');
-        let sessionHtml = null;
+        console.log('  POST /essa/submit-login (JSON)...');
+        console.log('  Body:', JSON.stringify(jsonBody).substring(0, 200));
 
         let submitResp = await makeRequest('POST', `${ESSA_BASE}/essa/submit-login`, {
             cookies,
-            data: formParams.toString(),
+            data: jsonBody,
             headers: submitHeaders,
         });
 
         cookies = submitResp.cookies;
         console.log(`  Status: ${submitResp.status}`);
+        console.log(`  Response type: ${typeof submitResp.data}`);
+        if (typeof submitResp.data === 'object') {
+            console.log(`  Response keys: ${Object.keys(submitResp.data || {}).join(', ')}`);
+        }
+        if (typeof submitResp.data === 'string') {
+            console.log(`  Response preview: ${submitResp.data.substring(0, 300)}`);
+        }
+
+        let sessionHtml = null;
 
         if (submitResp.status >= 300 && submitResp.status < 400) {
-            // Redirect - seguirlo
             const location = submitResp.headers['location'] || '';
             const redirectUrl = location.startsWith('http') ? location : `${ESSA_BASE}${location}`;
             console.log(`  Redirect -> ${redirectUrl}`);
@@ -423,19 +426,19 @@ app.post('/api/consultar', async (req, res) => {
             cookies = redirectResp.cookies;
             sessionHtml = typeof redirectResp.data === 'string' ? redirectResp.data : JSON.stringify(redirectResp.data);
 
-            // Si redirige a login de nuevo, el formulario fue rechazado
             if (redirectUrl.includes('/login') && !redirectUrl.includes('/session')) {
                 console.log('  Redireccion a login: formulario rechazado');
-                sessionHtml = null; // marcarlo como fallo para intentar otro metodo
+                sessionHtml = null;
             }
         } else if (submitResp.status === 200) {
             if (typeof submitResp.data === 'object' && submitResp.data !== null) {
-                // JSON response
-                console.log('  Respuesta JSON recibida');
-                if (submitResp.data.returnUrl || submitResp.data.data?.returnUrl) {
-                    const returnUrl = submitResp.data.returnUrl || submitResp.data.data.returnUrl;
+                console.log('  Respuesta JSON recibida:', JSON.stringify(submitResp.data).substring(0, 500));
+
+                // Si tiene URL de redireccion, seguirla
+                const returnUrl = submitResp.data.url || submitResp.data.returnUrl || submitResp.data.data?.returnUrl;
+                if (returnUrl) {
                     const fullUrl = returnUrl.startsWith('http') ? returnUrl : `${ESSA_BASE}${returnUrl}`;
-                    console.log(`  returnUrl -> ${fullUrl}`);
+                    console.log(`  Siguiendo URL -> ${fullUrl}`);
                     const sessionResp = await makeRequest('GET', fullUrl, { cookies });
                     cookies = sessionResp.cookies;
                     sessionHtml = typeof sessionResp.data === 'string' ? sessionResp.data : JSON.stringify(sessionResp.data);
@@ -446,85 +449,23 @@ app.post('/api/consultar', async (req, res) => {
             } else {
                 sessionHtml = submitResp.data;
             }
-        }
-
-        // --- Intento 2: POST con JSON body ---
-        if (!sessionHtml || (sessionHtml.includes('/essa/login') && !sessionHtml.includes('/essa/session'))) {
-            console.log('  Intento 2: POST /essa/submit-login (JSON)...');
-
-            const jsonBody = {
-                _token: csrfToken,
-                searchType: 'account_number',
-                paymentType: paymentType,
-                references: cuentas,
-                'g-recaptcha-response': captchaToken
-            };
-
-            submitResp = await makeRequest('POST', `${ESSA_BASE}/essa/submit-login`, {
-                cookies,
-                data: jsonBody,
-                headers: {
-                    ...submitHeaders,
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json, text/plain, */*',
-                },
-            });
-
-            cookies = submitResp.cookies;
-            console.log(`  Status: ${submitResp.status}`);
-
-            if (submitResp.status >= 300 && submitResp.status < 400) {
-                const location = submitResp.headers['location'] || '';
-                const redirectUrl = location.startsWith('http') ? location : `${ESSA_BASE}${location}`;
-                console.log(`  Redirect -> ${redirectUrl}`);
-                const redirectResp = await makeRequest('GET', redirectUrl, { cookies });
-                sessionHtml = typeof redirectResp.data === 'string' ? redirectResp.data : JSON.stringify(redirectResp.data);
-            } else if (submitResp.status === 200 && typeof submitResp.data === 'object') {
-                if (submitResp.data.returnUrl || submitResp.data.data?.returnUrl) {
-                    const returnUrl = submitResp.data.returnUrl || submitResp.data.data.returnUrl;
-                    const fullUrl = returnUrl.startsWith('http') ? returnUrl : `${ESSA_BASE}${returnUrl}`;
-                    const sessionResp = await makeRequest('GET', fullUrl, { cookies });
-                    sessionHtml = typeof sessionResp.data === 'string' ? sessionResp.data : JSON.stringify(sessionResp.data);
-                } else {
-                    return res.json({ success: true, facturas: [submitResp.data], source: 'json_direct' });
-                }
-            } else if (typeof submitResp.data === 'string') {
-                sessionHtml = submitResp.data;
-            }
-        }
-
-        // --- Intento 3: GET con query params (form method=get) ---
-        if (!sessionHtml || sessionHtml.includes('Seleccione el tipo de pago')) {
-            console.log('  Intento 3: GET /essa/login con query params...');
-
-            const queryParams = new URLSearchParams();
-            queryParams.append('searchType', 'account_number');
-            queryParams.append('paymentType', paymentType);
-            cuentas.forEach(c => queryParams.append('references[]', c));
-            queryParams.append('g-recaptcha-response', captchaToken);
-            queryParams.append('_token', csrfToken);
-
-            submitResp = await makeRequest('GET', `${LOGIN_URL}?${queryParams.toString()}`, {
-                cookies,
-                headers: { Referer: LOGIN_URL },
-            });
-
-            cookies = submitResp.cookies;
-            console.log(`  Status: ${submitResp.status}`);
-
-            if (submitResp.status >= 300 && submitResp.status < 400) {
-                const location = submitResp.headers['location'] || '';
-                const redirectUrl = location.startsWith('http') ? location : `${ESSA_BASE}${location}`;
-                console.log(`  Redirect -> ${redirectUrl}`);
-                const redirectResp = await makeRequest('GET', redirectUrl, { cookies });
-                sessionHtml = typeof redirectResp.data === 'string' ? redirectResp.data : JSON.stringify(redirectResp.data);
+        } else {
+            console.log(`  Error HTTP ${submitResp.status}`);
+            if (typeof submitResp.data === 'string') {
+                console.log(`  Body: ${submitResp.data.substring(0, 500)}`);
             } else {
-                sessionHtml = typeof submitResp.data === 'string' ? submitResp.data : JSON.stringify(submitResp.data);
+                console.log(`  Body: ${JSON.stringify(submitResp.data).substring(0, 500)}`);
             }
+        }
+
+        // Si fallo, intentar con todas las cuentas como array
+        if (!sessionHtml && cuentas.length > 0) {
+            console.log('  Reintentando con account_number como primer cuenta...');
+            // Ya se intento arriba, no reintentar
         }
 
         if (!sessionHtml) {
-            throw new Error('No se recibio respuesta del servidor de ESSA despues de 3 intentos');
+            throw new Error('No se recibio respuesta valida del servidor de ESSA. Status: ' + submitResp.status);
         }
 
         // =============================================================
@@ -591,3 +532,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`  ║  Health:   GET  /api/health               ║`);
     console.log(`  ╚══════════════════════════════════════════╝\n`);
 });
+
