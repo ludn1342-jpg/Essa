@@ -182,24 +182,61 @@ function parseInvoiceData(html) {
     // ------------------------------------------------------------------
     const $ = cheerio.load(html);
 
-    // data-page attribute (Inertia.js pattern)
+    // data-page attribute (Inertia.js pattern - PlacetoPay usa esto)
     const dataPage = $('#app').attr('data-page');
     if (dataPage) {
         try {
             const pageData = JSON.parse(dataPage);
+            console.log('  [Inertia] component:', pageData.component);
+            console.log('  [Inertia] props keys:', Object.keys(pageData.props || {}));
+
             if (pageData.props) {
                 const props = pageData.props;
+
+                // Log detallado de props para debug
+                for (const [key, val] of Object.entries(props)) {
+                    const valStr = JSON.stringify(val);
+                    console.log(`  [Inertia] props.${key}: ${valStr.substring(0, 200)}`);
+                }
+
+                // Buscar facturas/bills en multiples campos posibles
                 const bills = props.bills || props.invoices || props.session?.bills ||
-                    props.references || props.data?.bills;
+                    props.references || props.data?.bills || props.payment?.bills ||
+                    props.items || props.session?.invoices || props.session?.references ||
+                    props.microsite?.bills;
                 if (bills) {
                     return Array.isArray(bills) ? bills : [bills];
                 }
-                // Si no hay campo especifico, devolver todas las props relevantes
-                if (props.session || props.payment || props.reference) {
+
+                // Si tiene session con datos de pago, devolver todo
+                if (props.session || props.payment || props.reference || props.microsite) {
                     return [props];
                 }
+
+                // Si hay CUALQUIER prop con array de objetos, podrian ser facturas
+                for (const [key, val] of Object.entries(props)) {
+                    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
+                        console.log(`  [Inertia] Encontrado array en props.${key} con ${val.length} items`);
+                        return val;
+                    }
+                }
+
+                // Ultimo recurso: devolver todas las props (excepto app/config)
+                const relevantProps = {};
+                for (const [key, val] of Object.entries(props)) {
+                    if (!['errors', 'jetstream', 'user', 'flash', 'ziggy', 'app'].includes(key)) {
+                        relevantProps[key] = val;
+                    }
+                }
+                if (Object.keys(relevantProps).length > 0) {
+                    return [relevantProps];
+                }
             }
-        } catch { /* JSON invalido */ }
+        } catch (e) {
+            console.log('  [Inertia] Error parseando data-page:', e.message);
+        }
+    } else {
+        console.log('  [Inertia] No se encontro data-page en #app');
     }
 
     // Script tags con JSON
@@ -473,6 +510,22 @@ app.post('/api/consultar', async (req, res) => {
         // =============================================================
         console.log('\n[5/5] Parseando datos de factura...');
         console.log(`  HTML length: ${sessionHtml.length} chars`);
+        // Mostrar fragmento del HTML para debug
+        if (typeof sessionHtml === 'string') {
+            console.log(`  HTML preview (first 500): ${sessionHtml.substring(0, 500)}`);
+            // Buscar data-page para ver si hay Inertia props
+            const dpMatch = sessionHtml.match(/data-page="([^"]*)"/);
+            if (dpMatch) {
+                try {
+                    const decoded = dpMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+                    const dp = JSON.parse(decoded);
+                    console.log(`  data-page component: ${dp.component}`);
+                    console.log(`  data-page props keys: ${Object.keys(dp.props || {}).join(', ')}`);
+                } catch(e) {
+                    console.log(`  data-page found but parse error: ${e.message}`);
+                }
+            }
+        }
 
         const facturas = parseInvoiceData(sessionHtml);
 
@@ -532,4 +585,3 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`  ║  Health:   GET  /api/health               ║`);
     console.log(`  ╚══════════════════════════════════════════╝\n`);
 });
-
