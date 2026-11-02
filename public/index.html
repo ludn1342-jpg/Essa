@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago ESSA - PlacetoPay</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+        body { background-color: #ffffff; color: #333; display: flex; flex-direction: column; min-height: 100vh; }
+        .page-wrapper { display: flex; flex-direction: column; width: 100%; flex: 1; }
+        .left-column { width: 100%; display: flex; flex-direction: column; }
+        .banner-container { width: 100%; line-height: 0; }
+        .banner-img { width: 100%; height: auto; display: block; object-fit: cover; }
+        .form-wrapper { padding: 20px; width: 100%; max-width: 700px; }
+        .page-title { font-size: 16px; font-weight: 700; margin: 25px 0; line-height: 1.3; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 14px; margin-bottom: 6px; color: #444; }
+        .form-label span { color: #d9534f; }
+        .custom-select-wrapper { position: relative; width: 100%; }
+        select { width: 100%; padding: 10px 35px 10px 12px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; color: #333; background-color: #fff; appearance: none; cursor: pointer; outline: none; height: 42px; }
+        select:invalid { color: #999; }
+        .select-icons { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; gap: 6px; color: #999; pointer-events: none; font-size: 16px; }
+        .helper-text { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 8px; }
+        .input-tag-container { position: relative; border: 1px solid #ced4da; border-radius: 4px; padding: 8px 12px; background-color: #fff; min-height: 42px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; cursor: text; }
+        .input-tag-container:focus-within { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
+        .input-tag-container input { border: none; outline: none; font-size: 14px; flex: 1; min-width: 100px; background: transparent; color: #333; width: 100%; }
+        .tag-item { background-color: #a1a6ab; color: white; padding: 4px 8px; border-radius: 3px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+        .tag-item i { cursor: pointer; font-size: 14px; }
+        .terms-text { font-size: 12px; color: #6c757d; line-height: 1.5; margin-top: 25px; margin-bottom: 25px; }
+        .terms-text strong { color: #555; }
+        .btn-submit { width: 100%; background-color: #6f65f2; color: white; border: none; padding: 12px; font-size: 15px; font-weight: 500; border-radius: 25px; cursor: pointer; transition: background 0.2s; }
+        .btn-submit:hover { background-color: #5d53e0; }
+        .btn-submit:disabled { background-color: #b0aaef; cursor: not-allowed; }
+
+        /* Loading spinner */
+        .spinner { display: none; width: 20px; height: 20px; border: 2px solid #fff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Resultado de factura */
+        .resultado-container { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; }
+        .resultado-container.success { background-color: #d4edda; border: 1px solid #c3e6cb; }
+        .resultado-container.error { background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        .resultado-container.loading { background-color: #fff3cd; border: 1px solid #ffeeba; }
+        .resultado-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+        .factura-data { font-size: 13px; line-height: 1.8; }
+        .factura-data .row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); padding: 4px 0; }
+        .factura-data .label { color: #555; }
+        .factura-data .value { font-weight: 500; }
+
+        .right-column { display: none; width: 100%; padding: 30px; background-color: #fff; }
+        .maintenance-card h3 { font-size: 15px; margin-bottom: 10px; color: #212529; font-weight: 700; }
+        .maintenance-card p { font-size: 13px; color: #6c757d; line-height: 1.6; }
+        .footer-logos { width: 100%; background-color: #f8f9fa; padding: 20px 0; display: none; justify-content: center; align-items: center; margin-top: auto; gap: 15px; border-top: 1px solid #e9ecef; }
+        .footer-logos span { font-size: 18px; font-weight: 500; color: #6c757d; }
+        .footer-logos span span { color: #4a4a4a; font-weight: 700; }
+        .footer-logos .badge { background-color: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 11px; color: #6c757d; }
+
+        @media (min-width: 992px) {
+            .page-wrapper { flex-direction: row; align-items: flex-start; background-color: #fff; }
+            .left-column { width: 65%; border-right: 1px solid #e9ecef; min-height: 100vh; }
+            .form-wrapper { padding: 30px 50px; max-width: 100%; }
+            .right-column { display: block !important; width: 35%; }
+            .footer-logos { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-wrapper">
+        <div class="left-column">
+            <div class="banner-container">
+                <img src="essa.png" alt="ESSA Banner" class="banner-img">
+            </div>
+
+            <div class="form-wrapper">
+                <h1 class="page-title">Comience el proceso de pago, ingresando la siguiente información</h1>
+
+                <div class="form-group">
+                    <label class="form-label">Tipo de consulta <span>*</span></label>
+                    <div class="custom-select-wrapper">
+                        <select id="tipoConsulta">
+                            <option value="cuenta" selected>Número de cuenta</option>
+                        </select>
+                        <div class="select-icons">
+                            <i class="ph ph-x"></i>
+                            <i class="ph ph-caret-down"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tipo de pago <span>*</span></label>
+                    <div class="custom-select-wrapper">
+                        <select id="tipoPago" required>
+                            <option value="" disabled selected>Seleccione el tipo de pago</option>
+                            <option value="total">Pago total</option>
+                            <option value="sin_alumbrado">Pago sin alumbrado público</option>
+                            <option value="abonos">Abonos</option>
+                            <option value="saldos">Saldos</option>
+                        </select>
+                        <div class="select-icons">
+                            <i class="ph ph-x"></i>
+                            <i class="ph ph-caret-down"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <p class="helper-text">
+                        Número de cuenta. Puede consultar máximo 15 números de cuenta al mismo tiempo presionando Enter para adicionar el siguiente. Para finalizar haga clic en el botón Ingresar. <span style="color: #d9534f;">*</span>
+                    </p>
+                    <div class="input-tag-container" id="tagContainer">
+                        <input type="text" id="cuentaInput" autocomplete="off">
+                    </div>
+                </div>
+
+                <p class="terms-text">
+                    Al continuar, acepto las políticas aplicables para el tratamiento de mis datos personales según la jurisdicción local del responsable y de <strong>Evertec PlacetoPay</strong> en su calidad de encargado.
+                </p>
+
+                <button class="btn-submit" id="btnIngresar">
+                    <span id="btnText">Ingresar</span>
+                    <div class="spinner" id="btnSpinner"></div>
+                </button>
+
+                <!-- Resultado de la consulta -->
+                <div class="resultado-container" id="resultado">
+                    <div class="resultado-title" id="resultadoTitle"></div>
+                    <div class="factura-data" id="resultadoBody"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-column">
+            <div class="maintenance-card">
+                <h3>Aviso de Mantenimiento 24 de octubre.</h3>
+                <p>
+                    Este canal estará inhabilitado temporalmente desde el 24 de octubre a las 10:00 p.m. hasta el 25 de octubre a las 7:00 am, debido a la actualización de los sistemas de ESSA.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-logos">
+        <span>placeto<span>pay</span></span>
+        <span class="badge">by evertec</span>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIG - Cambiar si el server está en otro host
+        // ============================================
+        const API_URL = window.location.origin;
+
+        // ============================================
+        // Tags de cuenta
+        // ============================================
+        const tags = [];
+
+        function renderTags() {
+            const container = document.getElementById('tagContainer');
+            container.innerHTML = '';
+
+            tags.forEach((val, idx) => {
+                const tag = document.createElement('div');
+                tag.className = 'tag-item';
+                tag.innerHTML = `<span>${val}</span><i class="ph ph-x" data-idx="${idx}"></i>`;
+                tag.querySelector('i').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    tags.splice(idx, 1);
+                    renderTags();
+                });
+                container.appendChild(tag);
+            });
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'cuentaInput';
+            input.autocomplete = 'off';
+            input.placeholder = tags.length === 0 ? 'Ej: 262968' : '';
+            container.appendChild(input);
+            input.focus();
+            attachEnterEvent();
+        }
+
+        function attachEnterEvent() {
+            const input = document.getElementById('cuentaInput');
+            if (!input) return;
+
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = this.value.trim();
+                    if (val && tags.length < 15) {
+                        tags.push(val);
+                        renderTags();
+                    }
+                }
+            });
+        }
+
+        attachEnterEvent();
+
+        // ============================================
+        // Mostrar resultado
+        // ============================================
+        function showResult(type, title, body) {
+            const el = document.getElementById('resultado');
+            el.className = `resultado-container ${type}`;
+            el.style.display = 'block';
+            document.getElementById('resultadoTitle').textContent = title;
+            document.getElementById('resultadoBody').innerHTML = body;
+        }
+
+        function setLoading(loading) {
+            const btn = document.getElementById('btnIngresar');
+            const text = document.getElementById('btnText');
+            const spinner = document.getElementById('btnSpinner');
+
+            btn.disabled = loading;
+            text.style.display = loading ? 'none' : 'inline';
+            spinner.style.display = loading ? 'block' : 'none';
+        }
+
+        // ============================================
+        // Consultar factura
+        // ============================================
+        document.getElementById('btnIngresar').addEventListener('click', async function () {
+            // Verificar que hay al menos una cuenta (tag o input actual)
+            const inputActual = document.getElementById('cuentaInput');
+            if (inputActual && inputActual.value.trim()) {
+                tags.push(inputActual.value.trim());
+                renderTags();
+            }
+
+            if (tags.length === 0) {
+                showResult('error', 'Error', 'Por favor, ingrese al menos un número de cuenta.');
+                return;
+            }
+
+            const tipoPago = document.getElementById('tipoPago').value;
+            if (!tipoPago) {
+                showResult('error', 'Error', 'Por favor, seleccione el tipo de pago.');
+                return;
+            }
+
+            setLoading(true);
+            showResult('loading', 'Consultando...', 'Buscando factura en el sistema de ESSA. Esto puede tomar unos segundos...');
+
+            try {
+                const response = await fetch(`${API_URL}/api/consultar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cuentas: [...tags], tipoPago }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showResult('error', 'Error', data.error || 'Error en la consulta');
+                    return;
+                }
+
+                if (data.success && data.facturas) {
+                    let html = '';
+                    if (Array.isArray(data.facturas)) {
+                        data.facturas.forEach((f, i) => {
+                            if (typeof f === 'object' && !Array.isArray(f)) {
+                                // Objeto JSON
+                                html += `<div style="margin-bottom:12px;"><strong>Factura ${i + 1}</strong>`;
+                                Object.entries(f).forEach(([key, val]) => {
+                                    html += `<div class="row"><span class="label">${key}</span><span class="value">${val}</span></div>`;
+                                });
+                                html += '</div>';
+                            } else if (Array.isArray(f)) {
+                                // Array de celdas de tabla
+                                html += `<div class="row">`;
+                                f.forEach((cell) => {
+                                    html += `<span class="value">${cell}</span>`;
+                                });
+                                html += `</div>`;
+                            }
+                        });
+                    }
+                    showResult('success', 'Factura encontrada', html || JSON.stringify(data.facturas, null, 2));
+                } else {
+                    showResult('error', 'Sin resultados',
+                        data.message || 'No se encontraron facturas para estas cuentas. ' +
+                        '<br><br><small>Preview del servidor:</small><br>' +
+                        `<pre style="font-size:11px;max-height:200px;overflow:auto;background:#fff;padding:8px;border-radius:4px;">${(data.preview || '').substring(0, 1000)}</pre>`
+                    );
+                }
+            } catch (err) {
+                showResult('error', 'Error de conexión',
+                    `No se pudo conectar al servidor: ${err.message}<br><br>Verifica que el server.js esté corriendo en <code>${API_URL}</code>`
+                );
+            } finally {
+                setLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>
