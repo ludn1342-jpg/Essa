@@ -472,10 +472,52 @@ app.post('/api/consultar', async (req, res) => {
                 console.log('  Respuesta JSON recibida:', JSON.stringify(submitResp.data).substring(0, 500));
 
                 // Si tiene URL de redireccion, seguirla
-                const returnUrl = submitResp.data.url || submitResp.data.returnUrl || submitResp.data.data?.returnUrl;
+                const returnUrl = submitResp.data.sessionUrl || submitResp.data.url || submitResp.data.returnUrl || submitResp.data.data?.returnUrl;
                 if (returnUrl) {
                     const fullUrl = returnUrl.startsWith('http') ? returnUrl : `${ESSA_BASE}${returnUrl}`;
-                    console.log(`  Siguiendo URL -> ${fullUrl}`);
+                    console.log(`  Siguiendo sessionUrl -> ${fullUrl}`);
+
+                    // Intento 1: Request como Inertia.js (devuelve JSON directo con props)
+                    console.log('  Intento Inertia: GET con X-Inertia header...');
+                    const inertiaResp = await makeRequest('GET', fullUrl, {
+                        cookies,
+                        headers: {
+                            'X-Inertia': 'true',
+                            'X-Inertia-Version': '',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html, application/xhtml+xml',
+                        }
+                    });
+                    cookies = inertiaResp.cookies;
+
+                    if (typeof inertiaResp.data === 'object' && inertiaResp.data !== null) {
+                        console.log('  Inertia JSON recibido!');
+                        console.log('  Component:', inertiaResp.data.component);
+                        console.log('  Props keys:', Object.keys(inertiaResp.data.props || {}));
+                        const props = inertiaResp.data.props || {};
+                        for (const [key, val] of Object.entries(props)) {
+                            console.log(`  props.${key}: ${JSON.stringify(val).substring(0, 300)}`);
+                        }
+                        // Devolver las props directamente como facturas
+                        const bills = props.bills || props.invoices || props.references ||
+                            props.session?.bills || props.items || props.payment?.bills;
+                        if (bills) {
+                            return res.json({ success: true, facturas: Array.isArray(bills) ? bills : [bills], source: 'inertia_props' });
+                        }
+                        // Si no hay campo especifico de facturas, devolver todas las props utiles
+                        const relevantProps = {};
+                        for (const [key, val] of Object.entries(props)) {
+                            if (!['errors', 'jetstream', 'user', 'flash', 'ziggy', 'app'].includes(key)) {
+                                relevantProps[key] = val;
+                            }
+                        }
+                        if (Object.keys(relevantProps).length > 0) {
+                            return res.json({ success: true, facturas: [relevantProps], source: 'inertia_all_props' });
+                        }
+                    }
+
+                    // Intento 2: GET normal (HTML con data-page)
+                    console.log('  Intento HTML: GET normal...');
                     const sessionResp = await makeRequest('GET', fullUrl, { cookies });
                     cookies = sessionResp.cookies;
                     sessionHtml = typeof sessionResp.data === 'string' ? sessionResp.data : JSON.stringify(sessionResp.data);
