@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 const CAPMONSTER_KEY = 'eceb21c3a772cce204e2b666e7ebe25d';
 const ESSA_BASE = 'https://sites.placetopay.com';
 const LOGIN_URL = `${ESSA_BASE}/essa/login`;
+const RECAPTCHA_SITEKEY = '6Lc1WxkUAAAAAANhMFQXXYWC6Bb7HrqGUehlCtAN';
 
 // =====================================================================
 //  CapMonster - Resolver reCAPTCHA v2
@@ -344,13 +345,11 @@ app.post('/api/consultar', async (req, res) => {
         //  PASO 2: Extraer reCAPTCHA siteKey
         // =============================================================
         console.log('\n[2/5] Buscando siteKey del reCAPTCHA...');
-        const siteKey = await extractSiteKey(loginResp.data, cookies);
+        let siteKey = await extractSiteKey(loginResp.data, cookies);
 
         if (!siteKey) {
-            throw new Error(
-                'No se encontro la clave del reCAPTCHA en la pagina. ' +
-                'La pagina puede haber cambiado o estar bloqueando la solicitud.'
-            );
+            console.log('  No se encontro dinamicamente, usando siteKey hardcodeado...');
+            siteKey = RECAPTCHA_SITEKEY;
         }
         console.log(`  SiteKey: ${siteKey}`);
 
@@ -583,7 +582,7 @@ app.get('/api/health', (req, res) => {
 // =====================================================================
 //  Iniciar servidor
 // =====================================================================
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n  ╔══════════════════════════════════════════╗`);
     console.log(`  ║   ESSA Consulta de Facturas - Server     ║`);
     console.log(`  ╠══════════════════════════════════════════╣`);
