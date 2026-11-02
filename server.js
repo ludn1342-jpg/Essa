@@ -183,7 +183,22 @@ function parseInvoiceData(html) {
     const $ = cheerio.load(html);
 
     // data-page attribute (Inertia.js pattern - PlacetoPay usa esto)
-    const dataPage = $('#app').attr('data-page');
+    // Buscar data-page en cualquier elemento, no solo #app
+    let dataPage = $('#app').attr('data-page');
+    if (!dataPage) {
+        // Buscar en cualquier div con data-page
+        $('[data-page]').each((i, el) => {
+            if (!dataPage) dataPage = $(el).attr('data-page');
+        });
+    }
+    if (!dataPage) {
+        // Buscar directamente en el HTML con regex (por si cheerio no lo parsea bien)
+        const dpMatch = html.match(/data-page="([^"]+)"/);
+        if (dpMatch) {
+            dataPage = dpMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'");
+            console.log('  [Inertia] data-page encontrado via regex');
+        }
+    }
     if (dataPage) {
         try {
             const pageData = JSON.parse(dataPage);
@@ -555,17 +570,31 @@ app.post('/api/consultar', async (req, res) => {
         // Mostrar fragmento del HTML para debug
         if (typeof sessionHtml === 'string') {
             console.log(`  HTML preview (first 500): ${sessionHtml.substring(0, 500)}`);
-            // Buscar data-page para ver si hay Inertia props
-            const dpMatch = sessionHtml.match(/data-page="([^"]*)"/);
-            if (dpMatch) {
-                try {
-                    const decoded = dpMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
-                    const dp = JSON.parse(decoded);
-                    console.log(`  data-page component: ${dp.component}`);
-                    console.log(`  data-page props keys: ${Object.keys(dp.props || {}).join(', ')}`);
-                } catch(e) {
-                    console.log(`  data-page found but parse error: ${e.message}`);
-                }
+
+            // Buscar TODOS los divs con id
+            const idMatches = sessionHtml.match(/<div[^>]*id="[^"]*"[^>]*>/g) || [];
+            console.log(`  Divs con id: ${idMatches.slice(0, 5).join(' | ')}`);
+
+            // Buscar data-page en cualquier parte
+            const dpIdx = sessionHtml.indexOf('data-page');
+            if (dpIdx >= 0) {
+                console.log(`  data-page encontrado en posicion ${dpIdx}`);
+                console.log(`  Contexto: ...${sessionHtml.substring(Math.max(0, dpIdx - 50), dpIdx + 200)}...`);
+            } else {
+                console.log('  data-page NO encontrado en el HTML');
+            }
+
+            // Buscar scripts con datos JSON grandes
+            const scriptMatches = sessionHtml.match(/<script[^>]*>([\s\S]{200,}?)<\/script>/g) || [];
+            console.log(`  Scripts con contenido largo: ${scriptMatches.length}`);
+            for (let i = 0; i < Math.min(scriptMatches.length, 3); i++) {
+                console.log(`  Script[${i}] preview: ${scriptMatches[i].substring(0, 200)}`);
+            }
+
+            // Buscar cualquier JSON grande embebido
+            const jsonInHtml = sessionHtml.match(/\{[^{}]{500,}\}/);
+            if (jsonInHtml) {
+                console.log(`  JSON grande encontrado: ${jsonInHtml[0].substring(0, 300)}`);
             }
         }
 
