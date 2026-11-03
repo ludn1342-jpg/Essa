@@ -160,26 +160,79 @@ function parseInvoiceData(html) {
     // Los atributos Vue usan :prop="{&quot;key&quot;:...}"
     console.log('  [Parser] Buscando JSON en atributos HTML...');
 
-    // Extraer todos los valores de atributos que contienen &quot;
-    const attrRegex = /(?::|v-bind:)?[\w-]+="\{&quot;([\s\S]*?)\}"/g;
+    // Extraer JSON completo de atributos Vue - necesitamos balancear llaves
+    // porque los JSON son grandes y contienen llaves anidadas
     const allJsonObjects = [];
-    let match;
 
-    while ((match = attrRegex.exec(html)) !== null) {
-        const raw = '{&quot;' + match[1] + '}';
-        const decoded = raw
-            .replace(/&quot;/g, '"')
-            .replace(/&amp;/g, '&')
-            .replace(/&#039;/g, "'")
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&#34;/g, '"')
-            .replace(/\\\//g, '/');
+    // Metodo 1: Buscar atributos que empiezan con {&quot; y balancear llaves
+    let searchStart = 0;
+    while (true) {
+        const idx = html.indexOf('{&quot;', searchStart);
+        if (idx === -1) break;
 
-        try {
-            const obj = JSON.parse(decoded);
-            allJsonObjects.push(obj);
-        } catch { /* JSON incompleto o invalido */ }
+        // Verificar que esta dentro de un atributo (precedido por =")
+        const before = html.substring(Math.max(0, idx - 5), idx);
+        if (!before.includes('="')) {
+            searchStart = idx + 1;
+            continue;
+        }
+
+        // Encontrar el cierre del atributo: buscar }" que no este escapado
+        // El JSON termina cuando encontramos }" seguido de espacio o >
+        let depth = 0;
+        let pos = idx;
+        let endPos = -1;
+
+        // Trabajar con el HTML decodificado parcialmente
+        // Buscar el final del atributo (la comilla de cierre despues del JSON)
+        const chunk = html.substring(idx);
+        // Contar &quot; como comillas, { y } como llaves
+        let inStr = false;
+        let i = 0;
+        while (i < chunk.length) {
+            if (chunk.substring(i, i + 6) === '&quot;') {
+                inStr = !inStr;
+                i += 6;
+                continue;
+            }
+            if (!inStr) {
+                if (chunk[i] === '{') depth++;
+                if (chunk[i] === '}') {
+                    depth--;
+                    if (depth === 0) {
+                        endPos = i + 1;
+                        break;
+                    }
+                }
+            }
+            i++;
+        }
+
+        if (endPos > 0) {
+            const raw = chunk.substring(0, endPos);
+            const decoded = raw
+                .replace(/&quot;/g, '"')
+                .replace(/&amp;/g, '&')
+                .replace(/&#039;/g, "'")
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&#34;/g, '"')
+                .replace(/\\\//g, '/');
+
+            try {
+                const obj = JSON.parse(decoded);
+                allJsonObjects.push(obj);
+                console.log(`  [Parser] JSON extraido (${decoded.length} chars), keys: ${Object.keys(obj).slice(0, 8).join(', ')}`);
+            } catch (e) {
+                // Intentar reparar JSON truncado
+                if (decoded.length > 200) {
+                    console.log(`  [Parser] JSON no valido (${decoded.length} chars): ${e.message}`);
+                    console.log(`  [Parser]   Preview: ${decoded.substring(0, 200)}`);
+                }
+            }
+        }
+
+        searchStart = idx + 1;
     }
 
     console.log(`  [Parser] Encontrados ${allJsonObjects.length} objetos JSON en atributos`);
@@ -207,7 +260,10 @@ function parseInvoiceData(html) {
                         if (val[field]) {
                             console.log(`  [Parser] Facturas en session.${key}.${field}`);
                             const data = val[field];
-                            return Array.isArray(data) ? data : [data];
+                            const arr = Array.isArray(data) ? data : [data];
+                            console.log(`  [Parser] Bills count: ${arr.length}`);
+                            console.log(`  [Parser] Bills data: ${JSON.stringify(arr).substring(0, 2000)}`);
+                            return arr;
                         }
                     }
                 }
