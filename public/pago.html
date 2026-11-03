@@ -307,10 +307,6 @@
             return getFacturaField(f, 'debtorID', 'cuenta', 'account', 'accountNumber', 'account_number', 'reference') || '';
         }
 
-        function getFacturaNombre(f) {
-            return getFacturaField(f, 'debtorFirstName', 'nombre', 'name', 'customerName', 'client') || '';
-        }
-
         function getFacturaDesc(f) {
             const num = getFacturaNum(f);
             const cuenta = getFacturaCuenta(f);
