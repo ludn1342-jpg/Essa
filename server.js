@@ -259,7 +259,14 @@ function parseInvoiceData(html) {
                     for (const field of invoiceFields) {
                         if (val[field]) {
                             console.log(`  [Parser] Facturas en session.${key}.${field}`);
-                            const data = val[field];
+                            let data = val[field];
+
+                            // PlacetoPay envuelve bills en {data: [...]}
+                            if (data && typeof data === 'object' && !Array.isArray(data) && data.data) {
+                                console.log(`  [Parser] Desanidando ${field}.data`);
+                                data = data.data;
+                            }
+
                             const arr = Array.isArray(data) ? data : [data];
                             console.log(`  [Parser] Bills count: ${arr.length}`);
                             console.log(`  [Parser] Bills data: ${JSON.stringify(arr).substring(0, 2000)}`);
