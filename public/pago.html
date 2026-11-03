@@ -300,11 +300,11 @@
         }
 
         function getFacturaMonto(f) {
-            return getFacturaField(f, 'monto', 'amount', 'total', 'value', 'valor', 'balance', 'saldo', 'payment_amount') || '0';
+            return getFacturaField(f, 'totalAmount', 'monto', 'amount', 'total', 'value', 'valor', 'balance', 'saldo', 'payment_amount') || '0';
         }
 
         function getFacturaCuenta(f) {
-            return getFacturaField(f, 'cuenta', 'account', 'accountNumber', 'account_number', 'reference') || '';
+            return getFacturaField(f, 'debtorID', 'cuenta', 'account', 'accountNumber', 'account_number', 'reference') || '';
         }
 
         function getFacturaDesc(f) {
