@@ -151,183 +151,130 @@ async function extractSiteKey(html, cookieStr) {
 //  Parsear datos de factura del HTML de sesion
 // =====================================================================
 function parseInvoiceData(html) {
-    const facturas = [];
+    // ==================================================================
+    // PlacetoPay SPA: los datos estan en atributos HTML codificados
+    // con &quot; como props de componentes Vue.js
+    // ==================================================================
 
-    // ------------------------------------------------------------------
-    //  Metodo 1: Variables de ventana con JSON embebido
-    // ------------------------------------------------------------------
-    const windowPatterns = [
-        /window\.__INITIAL_(?:STATE|DATA)__\s*=\s*(\{[\s\S]*?\});\s*<\/script/,
-        /window\.(?:__)?(?:session|microsite|data|bills|invoices)\s*=\s*(\{[\s\S]*?\});\s*(?:<\/script|$)/gm,
-        /var\s+(?:session|microsite|data)\s*=\s*(\{[\s\S]*?\});\s*(?:<\/script|$)/gm,
-    ];
+    // Paso 1: Decodificar HTML entities y extraer TODOS los JSON de atributos
+    // Los atributos Vue usan :prop="{&quot;key&quot;:...}"
+    console.log('  [Parser] Buscando JSON en atributos HTML...');
 
-    for (const pattern of windowPatterns) {
-        let wm;
-        const regex = new RegExp(pattern.source, pattern.flags || '');
-        while ((wm = regex.exec(html)) !== null) {
-            try {
-                const obj = JSON.parse(wm[1]);
-                const bills = obj.bills || obj.invoices || obj.facturas ||
-                    obj.data?.bills || obj.data?.invoices || obj.session?.bills;
-                if (bills) {
-                    return Array.isArray(bills) ? bills : [bills];
-                }
-            } catch { /* JSON invalido */ }
-        }
-    }
+    // Extraer todos los valores de atributos que contienen &quot;
+    const attrRegex = /(?::|v-bind:)?[\w-]+="\{&quot;([\s\S]*?)\}"/g;
+    const allJsonObjects = [];
+    let match;
 
-    // ------------------------------------------------------------------
-    //  Metodo 2: JSON en script tags o data attributes
-    // ------------------------------------------------------------------
-    const $ = cheerio.load(html);
+    while ((match = attrRegex.exec(html)) !== null) {
+        const raw = '{&quot;' + match[1] + '}';
+        const decoded = raw
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&')
+            .replace(/&#039;/g, "'")
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&#34;/g, '"')
+            .replace(/\\\//g, '/');
 
-    // data-page attribute (Inertia.js pattern - PlacetoPay usa esto)
-    // Buscar data-page en cualquier elemento, no solo #app
-    let dataPage = $('#app').attr('data-page');
-    if (!dataPage) {
-        // Buscar en cualquier div con data-page
-        $('[data-page]').each((i, el) => {
-            if (!dataPage) dataPage = $(el).attr('data-page');
-        });
-    }
-    if (!dataPage) {
-        // Buscar directamente en el HTML con regex (por si cheerio no lo parsea bien)
-        const dpMatch = html.match(/data-page="([^"]+)"/);
-        if (dpMatch) {
-            dataPage = dpMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'");
-            console.log('  [Inertia] data-page encontrado via regex');
-        }
-    }
-    if (dataPage) {
         try {
-            const pageData = JSON.parse(dataPage);
-            console.log('  [Inertia] component:', pageData.component);
-            console.log('  [Inertia] props keys:', Object.keys(pageData.props || {}));
+            const obj = JSON.parse(decoded);
+            allJsonObjects.push(obj);
+        } catch { /* JSON incompleto o invalido */ }
+    }
 
-            if (pageData.props) {
-                const props = pageData.props;
+    console.log(`  [Parser] Encontrados ${allJsonObjects.length} objetos JSON en atributos`);
 
-                // Log detallado de props para debug
-                for (const [key, val] of Object.entries(props)) {
-                    const valStr = JSON.stringify(val);
-                    console.log(`  [Inertia] props.${key}: ${valStr.substring(0, 200)}`);
+    // Paso 2: Buscar el objeto principal de sesion (tiene type:"session")
+    for (const obj of allJsonObjects) {
+        if (obj.type === 'session') {
+            console.log('  [Parser] Encontrado objeto type:session');
+            console.log('  [Parser] Keys:', Object.keys(obj).join(', '));
+
+            // Buscar facturas/invoices en el objeto de sesion
+            const invoiceFields = ['bills', 'invoices', 'references', 'items', 'facturas', 'payments'];
+            for (const field of invoiceFields) {
+                if (obj[field]) {
+                    console.log(`  [Parser] Facturas en session.${field}`);
+                    const data = obj[field];
+                    return Array.isArray(data) ? data : [data];
                 }
+            }
 
-                // Buscar facturas/bills en multiples campos posibles
-                const bills = props.bills || props.invoices || props.session?.bills ||
-                    props.references || props.data?.bills || props.payment?.bills ||
-                    props.items || props.session?.invoices || props.session?.references ||
-                    props.microsite?.bills;
-                if (bills) {
-                    return Array.isArray(bills) ? bills : [bills];
+            // Buscar dentro de sub-objetos
+            for (const [key, val] of Object.entries(obj)) {
+                if (val && typeof val === 'object' && !Array.isArray(val)) {
+                    for (const field of invoiceFields) {
+                        if (val[field]) {
+                            console.log(`  [Parser] Facturas en session.${key}.${field}`);
+                            const data = val[field];
+                            return Array.isArray(data) ? data : [data];
+                        }
+                    }
                 }
-
-                // Si tiene session con datos de pago, devolver todo
-                if (props.session || props.payment || props.reference || props.microsite) {
-                    return [props];
-                }
-
-                // Si hay CUALQUIER prop con array de objetos, podrian ser facturas
-                for (const [key, val] of Object.entries(props)) {
-                    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
-                        console.log(`  [Inertia] Encontrado array en props.${key} con ${val.length} items`);
+                if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
+                    console.log(`  [Parser] Array en session.${key} con ${val.length} items`);
+                    // Si los items tienen amount/total/value, son facturas
+                    if (val[0].amount || val[0].total || val[0].value || val[0].reference) {
                         return val;
                     }
                 }
-
-                // Ultimo recurso: devolver todas las props (excepto app/config)
-                const relevantProps = {};
-                for (const [key, val] of Object.entries(props)) {
-                    if (!['errors', 'jetstream', 'user', 'flash', 'ziggy', 'app'].includes(key)) {
-                        relevantProps[key] = val;
-                    }
-                }
-                if (Object.keys(relevantProps).length > 0) {
-                    return [relevantProps];
-                }
             }
-        } catch (e) {
-            console.log('  [Inertia] Error parseando data-page:', e.message);
+
+            // Devolver el objeto completo de sesion
+            console.log('  [Parser] Devolviendo objeto session completo');
+            return [obj];
         }
-    } else {
-        console.log('  [Inertia] No se encontro data-page en #app');
     }
 
-    // Script tags con JSON
-    $('script:not([src])').each((i, el) => {
-        const text = $(el).html() || '';
-        // Buscar asignaciones grandes de JSON
-        const assignments = text.match(/=\s*(\{[^;]{100,}\})\s*;/g) || [];
-        for (const a of assignments) {
+    // Paso 3: Buscar objetos que contengan datos de factura
+    for (const obj of allJsonObjects) {
+        const keys = Object.keys(obj);
+        console.log(`  [Parser] Objeto con keys: ${keys.slice(0, 10).join(', ')}`);
+
+        // Si tiene history.data, es historial de pagos
+        if (obj.history?.data) {
+            console.log(`  [Parser] Encontrado history.data con ${obj.history.data.length} items`);
+        }
+
+        // Buscar arrays con datos de factura
+        for (const [key, val] of Object.entries(obj)) {
+            if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
+                if (val[0].amount || val[0].total || val[0].reference || val[0].invoice) {
+                    console.log(`  [Parser] Facturas en obj.${key}`);
+                    return val;
+                }
+            }
+        }
+    }
+
+    // Paso 4: Si encontramos objetos JSON, devolver TODOS los que tengan datos utiles
+    // (incluyendo el que tiene history, settings, etc.)
+    if (allJsonObjects.length > 0) {
+        console.log('  [Parser] Devolviendo todos los objetos JSON encontrados');
+        // Combinar en un solo objeto
+        const combined = {};
+        for (const obj of allJsonObjects) {
+            Object.assign(combined, obj);
+        }
+        return [combined];
+    }
+
+    // Paso 5: Fallback - buscar en cheerio
+    const $ = cheerio.load(html);
+
+    // Buscar cualquier elemento con atributos que contengan JSON decodificado
+    $('[data-page]').each((i, el) => {
+        const dp = $(el).attr('data-page');
+        if (dp) {
             try {
-                const jsonStr = a.replace(/^=\s*/, '').replace(/;\s*$/, '');
-                const obj = JSON.parse(jsonStr);
-                if (obj && typeof obj === 'object') {
-                    facturas.push(obj);
-                }
-            } catch { /* continuar */ }
+                const obj = JSON.parse(dp);
+                if (obj.props) return [obj.props];
+            } catch {}
         }
     });
 
-    if (facturas.length > 0) return facturas;
-
-    // ------------------------------------------------------------------
-    //  Metodo 3: Tablas HTML con datos de factura
-    // ------------------------------------------------------------------
-    $('table').each((i, table) => {
-        const rows = $(table).find('tr');
-        const headers = [];
-        rows.first().find('th, td').each((j, cell) => {
-            headers.push($(cell).text().trim());
-        });
-
-        rows.slice(1).each((j, row) => {
-            const factura = {};
-            $(row).find('td').each((k, cell) => {
-                const key = headers[k] || `col_${k}`;
-                factura[key] = $(cell).text().trim();
-            });
-            if (Object.keys(factura).length > 0) {
-                facturas.push(factura);
-            }
-        });
-    });
-
-    if (facturas.length > 0) return facturas;
-
-    // ------------------------------------------------------------------
-    //  Metodo 4: Buscar patrones de texto con regex
-    // ------------------------------------------------------------------
-    const bodyText = $.text().replace(/\s+/g, ' ');
-
-    // Patron: valores monetarios COP
-    const moneyPattern = /\$\s*([\d.,]+)/g;
-    let money;
-    const montos = [];
-    while ((money = moneyPattern.exec(bodyText)) !== null) {
-        montos.push(money[1]);
-    }
-
-    // Patron: numeros de factura
-    const factNumPattern = /factura\s*(?:N[°o.]?\s*)?:?\s*(\d+)/gi;
-    let fn;
-    while ((fn = factNumPattern.exec(bodyText)) !== null) {
-        const f = { facturaNum: fn[1] };
-        if (montos.length > 0) {
-            f.monto = '$' + montos.shift();
-        }
-        facturas.push(f);
-    }
-
-    // Si no se encontraron facturas pero hay montos, retornar los montos
-    if (facturas.length === 0 && montos.length > 0) {
-        montos.forEach((m, i) => {
-            facturas.push({ monto: '$' + m, index: i });
-        });
-    }
-
-    return facturas;
+    console.log('  [Parser] No se encontraron datos de factura');
+    return [];
 }
 
 // =====================================================================
