@@ -492,47 +492,70 @@ app.post('/api/consultar', async (req, res) => {
                     const fullUrl = returnUrl.startsWith('http') ? returnUrl : `${ESSA_BASE}${returnUrl}`;
                     console.log(`  Siguiendo sessionUrl -> ${fullUrl}`);
 
-                    // Intento 1: Request como Inertia.js (devuelve JSON directo con props)
-                    console.log('  Intento Inertia: GET con X-Inertia header...');
-                    const inertiaResp = await makeRequest('GET', fullUrl, {
-                        cookies,
-                        headers: {
-                            'X-Inertia': 'true',
-                            'X-Inertia-Version': '',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'text/html, application/xhtml+xml',
-                        }
-                    });
-                    cookies = inertiaResp.cookies;
+                    // La pagina de sesion es SPA Vue.js - los datos se cargan via AJAX
+                    // Probar multiples endpoints API para obtener datos de factura
+                    const apiEndpoints = [
+                        { url: `${ESSA_BASE}/essa/session`, desc: '/session (JSON)', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } },
+                        { url: `${ESSA_BASE}/essa/session`, desc: '/session (Inertia)', headers: { 'X-Inertia': 'true', 'X-Inertia-Version': '', 'Accept': 'text/html, application/xhtml+xml' } },
+                        { url: `${ESSA_BASE}/essa/session/invoices`, desc: '/session/invoices', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } },
+                        { url: `${ESSA_BASE}/essa/session/bills`, desc: '/session/bills', headers: { 'Accept': 'application/json' } },
+                        { url: `${ESSA_BASE}/essa/api/session`, desc: '/api/session', headers: { 'Accept': 'application/json' } },
+                    ];
 
-                    if (typeof inertiaResp.data === 'object' && inertiaResp.data !== null) {
-                        console.log('  Inertia JSON recibido!');
-                        console.log('  Component:', inertiaResp.data.component);
-                        console.log('  Props keys:', Object.keys(inertiaResp.data.props || {}));
-                        const props = inertiaResp.data.props || {};
-                        for (const [key, val] of Object.entries(props)) {
-                            console.log(`  props.${key}: ${JSON.stringify(val).substring(0, 300)}`);
-                        }
-                        // Devolver las props directamente como facturas
-                        const bills = props.bills || props.invoices || props.references ||
-                            props.session?.bills || props.items || props.payment?.bills;
-                        if (bills) {
-                            return res.json({ success: true, facturas: Array.isArray(bills) ? bills : [bills], source: 'inertia_props' });
-                        }
-                        // Si no hay campo especifico de facturas, devolver todas las props utiles
-                        const relevantProps = {};
-                        for (const [key, val] of Object.entries(props)) {
-                            if (!['errors', 'jetstream', 'user', 'flash', 'ziggy', 'app'].includes(key)) {
-                                relevantProps[key] = val;
+                    let foundData = false;
+                    for (const ep of apiEndpoints) {
+                        console.log(`  Probando ${ep.desc}...`);
+                        try {
+                            const apiResp = await makeRequest('GET', ep.url, {
+                                cookies,
+                                headers: { ...ep.headers, 'Referer': fullUrl }
+                            });
+                            cookies = apiResp.cookies;
+                            console.log(`    Status: ${apiResp.status}, Type: ${typeof apiResp.data}`);
+
+                            if (apiResp.status === 200 && typeof apiResp.data === 'object' && apiResp.data !== null) {
+                                const keys = Object.keys(apiResp.data);
+                                console.log(`    Keys: ${keys.join(', ')}`);
+                                console.log(`    Full response: ${JSON.stringify(apiResp.data).substring(0, 2000)}`);
+
+                                // Inertia response
+                                if (apiResp.data.component && apiResp.data.props) {
+                                    console.log(`    INERTIA! component: ${apiResp.data.component}`);
+                                    const props = apiResp.data.props;
+                                    for (const [key, val] of Object.entries(props)) {
+                                        console.log(`    props.${key}: ${JSON.stringify(val).substring(0, 500)}`);
+                                    }
+                                    const bills = props.bills || props.invoices || props.references ||
+                                        props.session?.bills || props.items || props.payment;
+                                    if (bills) {
+                                        return res.json({ success: true, facturas: Array.isArray(bills) ? bills : [bills], source: 'inertia' });
+                                    }
+                                    const relevantProps = {};
+                                    for (const [key, val] of Object.entries(props)) {
+                                        if (!['errors', 'jetstream', 'user', 'flash', 'ziggy'].includes(key)) {
+                                            relevantProps[key] = val;
+                                        }
+                                    }
+                                    if (Object.keys(relevantProps).length > 0) {
+                                        return res.json({ success: true, facturas: [relevantProps], source: 'inertia_props' });
+                                    }
+                                }
+
+                                // JSON directo
+                                if (apiResp.data.data || apiResp.data.bills || apiResp.data.invoices) {
+                                    const data = apiResp.data.data || apiResp.data.bills || apiResp.data.invoices;
+                                    return res.json({ success: true, facturas: Array.isArray(data) ? data : [data], source: 'api_json' });
+                                }
+                            } else if (apiResp.status >= 300 && apiResp.status < 400) {
+                                console.log(`    Redirect: ${apiResp.headers['location'] || 'unknown'}`);
                             }
-                        }
-                        if (Object.keys(relevantProps).length > 0) {
-                            return res.json({ success: true, facturas: [relevantProps], source: 'inertia_all_props' });
+                        } catch (e) {
+                            console.log(`    Error: ${e.message}`);
                         }
                     }
 
-                    // Intento 2: GET normal (HTML con data-page)
-                    console.log('  Intento HTML: GET normal...');
+                    // Ultimo recurso: GET HTML de sesion y parsear
+                    console.log('  Cargando HTML de sesion para parsear...');
                     const sessionResp = await makeRequest('GET', fullUrl, { cookies });
                     cookies = sessionResp.cookies;
                     sessionHtml = typeof sessionResp.data === 'string' ? sessionResp.data : JSON.stringify(sessionResp.data);
@@ -591,10 +614,27 @@ app.post('/api/consultar', async (req, res) => {
                 console.log(`  Script[${i}] preview: ${scriptMatches[i].substring(0, 200)}`);
             }
 
-            // Buscar cualquier JSON grande embebido
+            // Buscar TODOS los JSON grandes embebidos (con &quot;)
+            const quotedJsons = sessionHtml.match(/\{(?:&quot;|&#34;)[^<]{200,}?\}/g) || [];
+            console.log(`  JSONs con &quot; encontrados: ${quotedJsons.length}`);
+            for (let i = 0; i < Math.min(quotedJsons.length, 5); i++) {
+                const decoded = quotedJsons[i].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'").replace(/&#34;/g, '"');
+                console.log(`  QuotedJSON[${i}] (${decoded.length} chars): ${decoded.substring(0, 500)}`);
+                try {
+                    const obj = JSON.parse(decoded);
+                    console.log(`  QuotedJSON[${i}] keys: ${Object.keys(obj).join(', ')}`);
+                    // Si tiene datos de factura, usarlos
+                    if (obj.bills || obj.invoices || obj.references || obj.items) {
+                        const data = obj.bills || obj.invoices || obj.references || obj.items;
+                        facturas.push(...(Array.isArray(data) ? data : [data]));
+                    }
+                } catch(e) { /* no es JSON valido */ }
+            }
+
+            // Buscar JSON normal grande
             const jsonInHtml = sessionHtml.match(/\{[^{}]{500,}\}/);
             if (jsonInHtml) {
-                console.log(`  JSON grande encontrado: ${jsonInHtml[0].substring(0, 300)}`);
+                console.log(`  JSON grande normal: ${jsonInHtml[0].substring(0, 300)}`);
             }
         }
 
